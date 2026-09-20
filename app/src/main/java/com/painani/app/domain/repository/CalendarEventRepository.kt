@@ -19,4 +19,9 @@ interface CalendarEventRepository {
     suspend fun replaceSource(source: String, events: List<CalendarEvent>)
 
     suspend fun deleteSource(source: String)
+
+    /** Edits one occurrence in place. Note that re-importing its source file will overwrite the edit. */
+    suspend fun update(event: CalendarEvent)
+
+    suspend fun delete(id: Long)
 }

@@ -50,6 +50,7 @@ Multiplatform module if an iOS build is ever wanted.
 - [x] Import .ics calendars (training plans, races) and show them alongside sessions
 - [x] Day / week / month / agenda calendar views
 - [x] Profile and weight log
-- [ ] Exercise picker + rest timer on the strength screen (Flexify reference)
+- [x] Exercise picker + rest timer on the strength screen
+- [x] Edit / delete imported calendar events
 - [ ] Per-exercise and per-distance progress charts
 - [ ] GPX/TCX export

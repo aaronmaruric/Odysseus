@@ -3,6 +3,7 @@ package com.painani.app.data.local.dao
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Update
 import com.painani.app.data.local.entity.CalendarEventEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -22,4 +23,10 @@ interface CalendarEventDao {
 
     @Query("DELETE FROM calendar_events WHERE source = :source")
     suspend fun deleteSource(source: String)
+
+    @Update
+    suspend fun update(event: CalendarEventEntity)
+
+    @Query("DELETE FROM calendar_events WHERE id = :id")
+    suspend fun delete(id: Long)
 }

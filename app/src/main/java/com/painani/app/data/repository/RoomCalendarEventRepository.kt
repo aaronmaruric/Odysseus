@@ -35,6 +35,10 @@ class RoomCalendarEventRepository(
 
     override suspend fun deleteSource(source: String) = dao.deleteSource(source)
 
+    override suspend fun update(event: CalendarEvent) = dao.update(event.toEntity(event.source).copy(id = event.id))
+
+    override suspend fun delete(id: Long) = dao.delete(id)
+
     private fun CalendarEventEntity.toDomain() = CalendarEvent(
         id = id,
         uid = uid,

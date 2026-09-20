@@ -101,6 +101,7 @@ fun CalendarScreen(
                 sessions = state.sessionsByDate[state.anchor].orEmpty(),
                 events = state.eventsByDate[state.anchor].orEmpty(),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
+                eventActions = EventActions(onSave = viewModel::saveEvent, onDelete = viewModel::deleteEvent),
             )
             CalendarMode.LIST -> AgendaList(
                 from = state.rangeStart,

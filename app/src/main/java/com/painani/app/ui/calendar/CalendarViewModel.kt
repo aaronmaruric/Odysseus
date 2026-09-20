@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 enum class CalendarMode { DAY, WEEK, MONTH, LIST }
 
@@ -70,6 +71,9 @@ class CalendarViewModel(
     fun setMode(mode: CalendarMode) = view.update { it.copy(mode = mode) }
     fun setAnchor(date: LocalDate) = view.update { it.copy(anchor = date) }
     fun today() = view.update { it.copy(anchor = LocalDate.now()) }
+
+    fun saveEvent(event: CalendarEvent) = viewModelScope.launch { events.update(event) }
+    fun deleteEvent(event: CalendarEvent) = viewModelScope.launch { events.delete(event.id) }
 
     fun previous() = view.update { it.copy(anchor = it.shift(-1)) }
     fun next() = view.update { it.copy(anchor = it.shift(1)) }

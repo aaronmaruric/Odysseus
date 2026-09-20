@@ -9,11 +9,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -25,6 +33,12 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+/** Callbacks for editing imported events. Null hides the edit affordance. */
+data class EventActions(
+    val onSave: (CalendarEvent) -> Unit,
+    val onDelete: (CalendarEvent) -> Unit,
+)
+
 /** Everything on one day: planned events first, then what actually happened. */
 @Composable
 fun DayContent(
@@ -32,7 +46,20 @@ fun DayContent(
     events: List<CalendarEvent>,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(12.dp),
+    eventActions: EventActions? = null,
 ) {
+    var editing by remember { mutableStateOf<CalendarEvent?>(null) }
+    editing?.let { e ->
+        if (eventActions != null) {
+            EventEditDialog(
+                event = e,
+                onSave = { eventActions.onSave(it); editing = null },
+                onDelete = { eventActions.onDelete(e); editing = null },
+                onDismiss = { editing = null },
+            )
+        }
+    }
+
     if (sessions.isEmpty() && events.isEmpty()) {
         Column(
             modifier = modifier.fillMaxSize().padding(24.dp),
@@ -47,24 +74,36 @@ fun DayContent(
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        items(events, key = { "e${it.id}" }) { EventCard(it) }
+        items(events, key = { "e${it.id}" }) { event ->
+            EventCard(event, onEdit = if (eventActions != null) ({ editing = event }) else null)
+        }
         items(sessions, key = { "s${it.id}" }) { SessionCard(it) }
     }
 }
 
 @Composable
-fun EventCard(event: CalendarEvent) {
+fun EventCard(event: CalendarEvent, onEdit: (() -> Unit)? = null) {
     val timeFmt = DateTimeFormatter.ofPattern("HH:mm")
     val zone = ZoneId.systemDefault()
     OutlinedCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("PLANNED", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "PLANNED",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
                 Text(
                     text = if (event.allDay) "ALL DAY"
                     else event.start.atZone(zone).format(timeFmt) + " – " + event.end.atZone(zone).format(timeFmt),
                     style = MaterialTheme.typography.bodyMedium,
                 )
+                if (onEdit != null) {
+                    IconButton(onClick = onEdit, modifier = Modifier.padding(start = 4.dp)) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit event")
+                    }
+                }
             }
             Text(event.summary, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp))
             if (event.location.isNotBlank()) {

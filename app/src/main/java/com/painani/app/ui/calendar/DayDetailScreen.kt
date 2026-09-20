@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -25,6 +26,7 @@ import com.painani.app.domain.repository.SessionRepository
 import com.painani.app.ui.theme.NothingRed
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.launch
 
 /** Full-screen view of one day, with arrows to step to neighbouring days without leaving it. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,6 +46,13 @@ fun DayDetailScreen(
     val sessions by sessionFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val events by eventFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val isToday = date == LocalDate.now()
+    val scope = rememberCoroutineScope()
+    val eventActions = remember {
+        EventActions(
+            onSave = { e -> scope.launch { eventRepository.update(e) } },
+            onDelete = { e -> scope.launch { eventRepository.delete(e.id) } },
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -71,6 +80,11 @@ fun DayDetailScreen(
             )
         },
     ) { padding ->
-        DayContent(sessions = sessions, events = events, modifier = Modifier.padding(padding))
+        DayContent(
+            sessions = sessions,
+            events = events,
+            modifier = Modifier.padding(padding),
+            eventActions = eventActions,
+        )
     }
 }
