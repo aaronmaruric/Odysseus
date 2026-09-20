@@ -5,7 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -31,6 +31,7 @@ import com.painani.app.ui.calendar.CalendarScreen
 import com.painani.app.ui.calendar.DayDetailScreen
 import com.painani.app.ui.run.RunScreen
 import com.painani.app.ui.settings.SettingsScreen
+import com.painani.app.ui.stats.StatsScreen
 import com.painani.app.ui.strength.StrengthScreen
 import com.painani.app.ui.theme.NothingRed
 import java.time.LocalDate
@@ -39,6 +40,7 @@ sealed class Route(val path: String) {
     data object Calendar : Route("calendar")
     data object Run : Route("run")
     data object Strength : Route("strength")
+    data object Stats : Route("stats")
     data object Settings : Route("settings")
     data object DayDetail : Route("day/{date}") {
         fun build(date: LocalDate) = "day/$date"
@@ -51,7 +53,7 @@ private val topLevel = listOf(
     TopLevel(Route.Calendar, R.string.nav_calendar, Icons.Default.CalendarMonth),
     TopLevel(Route.Run, R.string.nav_run, Icons.AutoMirrored.Filled.DirectionsRun),
     TopLevel(Route.Strength, R.string.nav_strength, Icons.Default.FitnessCenter),
-    TopLevel(Route.Settings, R.string.nav_settings, Icons.Default.Settings),
+    TopLevel(Route.Stats, R.string.nav_stats, Icons.Default.BarChart),
 )
 
 @Composable
@@ -119,6 +121,16 @@ fun PainaniNavHost(container: AppContainer) {
             composable(Route.Strength.path) {
                 StrengthScreen(repository = container.sessionRepository, healthSync = container.healthSync)
             }
+            composable(Route.Stats.path) {
+                StatsScreen(
+                    sessionRepository = container.sessionRepository,
+                    bodyStatsRepository = container.bodyStatsRepository,
+                    healthDataRepository = container.healthDataRepository,
+                    healthConnect = container.healthConnect,
+                    healthSync = container.healthSync,
+                    onOpenSettings = { navController.navigate(Route.Settings.path) { launchSingleTop = true } },
+                )
+            }
             composable(Route.Settings.path) {
                 SettingsScreen(
                     profileRepository = container.profileRepository,
@@ -126,6 +138,7 @@ fun PainaniNavHost(container: AppContainer) {
                     eventRepository = container.calendarEventRepository,
                     healthConnect = container.healthConnect,
                     healthSync = container.healthSync,
+                    onBack = { navController.popBackStack() },
                 )
             }
         }

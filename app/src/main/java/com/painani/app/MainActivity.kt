@@ -18,4 +18,10 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onStart() {
+        super.onStart()
+        // Foreground catch-up: works on every Android version, unlike the background worker.
+        (application as PainaniApp).container.healthSync.refreshIfStale()
+    }
 }

@@ -6,6 +6,7 @@ import android.provider.OpenableColumns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.painani.app.data.health.AutoSyncSettings
 import com.painani.app.data.health.DailyReadout
 import com.painani.app.data.health.HealthConnectManager
 import com.painani.app.data.health.HealthStatus
@@ -42,6 +43,10 @@ data class HealthUiState(
     val readout: DailyReadout? = null,
     val lastSync: Instant? = null,
     val syncing: Boolean = false,
+    /** Null when this Health Connect build cannot read in the background at all. */
+    val backgroundGranted: Boolean? = null,
+    val historyGranted: Boolean? = null,
+    val autoSync: AutoSyncSettings = AutoSyncSettings(),
 )
 
 class SettingsViewModel(
@@ -55,12 +60,18 @@ class SettingsViewModel(
     private val _health = MutableStateFlow(HealthUiState(status = health.status))
     val healthState: StateFlow<HealthUiState> = _health
 
-    val healthPermissions = HealthConnectManager.PERMISSIONS
+    /** Data permissions plus background/history reads where the device offers them. */
+    val healthPermissions: Set<String> get() = health.requestablePermissions()
     val healthPermissionContract get() = health.permissionContract
 
     init {
         refreshHealth()
         viewModelScope.launch { healthSync.lastSyncTime.collect { t -> _health.update { it.copy(lastSync = t) } } }
+        viewModelScope.launch { healthSync.autoSyncSettings.collect { a -> _health.update { it.copy(autoSync = a) } } }
+    }
+
+    fun setAutoSync(settings: AutoSyncSettings) {
+        viewModelScope.launch { healthSync.setAutoSync(settings) }
     }
 
     /** Re-checks availability and permissions, then loads the daily readout if connected. */
@@ -68,7 +79,9 @@ class SettingsViewModel(
         viewModelScope.launch {
             val status = health.status
             val connected = runCatching { health.hasAllPermissions() }.getOrDefault(false)
-            _health.update { it.copy(status = status, connected = connected) }
+            val background = if (health.supportsBackgroundRead) runCatching { health.hasBackgroundRead() }.getOrDefault(false) else null
+            val history = if (health.supportsHistoryRead) runCatching { health.hasHistoryRead() }.getOrDefault(false) else null
+            _health.update { it.copy(status = status, connected = connected, backgroundGranted = background, historyGranted = history) }
             if (connected) {
                 val readout = runCatching { health.dailyReadout() }.getOrNull()
                 _health.update { it.copy(readout = readout) }

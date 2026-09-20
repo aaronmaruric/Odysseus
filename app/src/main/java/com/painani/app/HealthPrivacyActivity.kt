@@ -35,7 +35,7 @@ class HealthPrivacyActivity : ComponentActivity() {
 
                                 What it reads from Health Connect
                                 • Heart rate — to attach average and maximum heart rate to your runs and each kilometre split.
-                                • Steps, sleep, resting heart rate — shown as a daily readout in Settings.
+                                • Steps, distance, active calories, exercise time, sleep (with stages) and resting heart rate — cached on the phone and charted on the Stats page.
                                 • Weight — weigh-ins from your watch, scale or Samsung Health are added to your weight log.
 
                                 What it writes to Health Connect

@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Refresh
@@ -26,6 +27,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import android.content.Intent
 import android.net.Uri
+import com.painani.app.data.health.AutoSyncSettings
 import com.painani.app.data.health.HealthConnectManager
 import com.painani.app.data.health.HealthStatus
 import com.painani.app.data.health.HealthSync
@@ -45,6 +47,8 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -85,6 +89,7 @@ fun SettingsScreen(
     eventRepository: CalendarEventRepository,
     healthConnect: HealthConnectManager,
     healthSync: HealthSync,
+    onBack: () -> Unit,
     viewModel: SettingsViewModel = viewModel(
         factory = SettingsViewModel.Factory(profileRepository, bodyStatsRepository, eventRepository, healthConnect, healthSync),
     ),
@@ -115,7 +120,13 @@ fun SettingsScreen(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("SETTINGS", style = MaterialTheme.typography.titleLarge)
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.width(4.dp))
+            Text("SETTINGS", style = MaterialTheme.typography.titleLarge)
+        }
 
         // Re-key the form on the loaded profile so it does not fight the first emission.
         if (state.loaded) {
@@ -141,6 +152,8 @@ fun SettingsScreen(
                 runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(HealthConnectManager.INSTALL_URL))) }
             },
             onSync = viewModel::syncHealthNow,
+            onGrantExtras = { healthPermissionLauncher.launch(viewModel.healthPermissions) },
+            onAutoSync = viewModel::setAutoSync,
         )
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -184,6 +197,8 @@ private fun HealthSection(
     onConnect: () -> Unit,
     onInstall: () -> Unit,
     onSync: () -> Unit,
+    onGrantExtras: () -> Unit,
+    onAutoSync: (AutoSyncSettings) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         when {
@@ -203,11 +218,12 @@ private fun HealthSection(
             }
             !state.connected -> {
                 Text(
-                    "Pull heart rate, steps, sleep and weigh-ins from your watch or Samsung Health, and write your runs and workouts back.",
+                    "Pull steps, sleep, heart rate and weigh-ins from your watch or Samsung Health, and write your runs and workouts back.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Button(onClick = onConnect, modifier = Modifier.fillMaxWidth()) { Text("CONNECT") }
+                SamsungHint()
             }
             else -> {
                 val r = state.readout
@@ -236,9 +252,78 @@ private fun HealthSection(
                         }
                     }
                 }
+                AutoSyncControls(state, onGrantExtras, onAutoSync)
+                SamsungHint()
             }
         }
     }
+}
+
+/**
+ * Background schedule. Reads while the app is closed only work when Health Connect has granted
+ * the background permission, so the toggle explains the situation instead of silently failing.
+ */
+@Composable
+private fun AutoSyncControls(
+    state: HealthUiState,
+    onGrantExtras: () -> Unit,
+    onAutoSync: (AutoSyncSettings) -> Unit,
+) {
+    val auto = state.autoSync
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Background sync", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    when (state.backgroundGranted) {
+                        null -> "This Health Connect version only allows reads while the app is open. It refreshes every time you open Painani."
+                        false -> "Health Connect has not allowed background reads yet."
+                        true -> "Runs every ${auto.intervalHours}h while the app is closed. The system batches it with other work, so battery use is negligible."
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(
+                checked = auto.enabled,
+                onCheckedChange = { onAutoSync(auto.copy(enabled = it)) },
+                enabled = state.backgroundGranted != null,
+                colors = SwitchDefaults.colors(checkedTrackColor = NothingRed),
+            )
+        }
+        if (state.backgroundGranted == false || state.historyGranted == false) {
+            OutlinedButton(onClick = onGrantExtras, modifier = Modifier.fillMaxWidth()) {
+                Text(if (state.backgroundGranted == false) "ALLOW BACKGROUND ACCESS" else "ALLOW FULL HISTORY")
+            }
+        }
+        if (auto.enabled && state.backgroundGranted == true) {
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                AutoSyncSettings.INTERVALS.forEachIndexed { i, h ->
+                    SegmentedButton(
+                        selected = auto.intervalHours == h,
+                        onClick = { onAutoSync(auto.copy(intervalHours = h)) },
+                        shape = SegmentedButtonDefaults.itemShape(index = i, count = AutoSyncSettings.INTERVALS.size),
+                        colors = SegmentedButtonDefaults.colors(
+                            activeContainerColor = MaterialTheme.colorScheme.primary,
+                            activeContentColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
+                        icon = {},
+                    ) { Text("EVERY ${h}H", style = MaterialTheme.typography.labelSmall) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SamsungHint() {
+    Text(
+        "Using a Galaxy Watch or Samsung Health? Samsung Health has no direct API for other apps; " +
+            "it shares through Health Connect instead. In Samsung Health open Settings > Health Connect " +
+            "and turn on sync for steps, sleep, heart rate, exercise and weight. Its activity and sleep then show up under Stats.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 private fun formatHours(d: Duration): String {

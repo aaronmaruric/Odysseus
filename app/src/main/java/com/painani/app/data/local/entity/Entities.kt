@@ -135,3 +135,26 @@ data class WeightEntryEntity(
     val note: String,
     @ColumnInfo(defaultValue = "NULL") val sourceId: String? = null,
 )
+
+/**
+ * One day's readout pulled from Health Connect (steps, sleep, resting HR ...). Cached locally so
+ * the stats page can chart weeks of history without re-reading Health Connect every time.
+ */
+@Entity(tableName = "daily_health")
+data class DailyHealthEntity(
+    /** ISO date, yyyy-MM-dd, in the phone's zone at the time of sync. */
+    @PrimaryKey val date: String,
+    val steps: Long?,
+    val distanceMeters: Double?,
+    val activeCalories: Double?,
+    val exerciseMinutes: Int?,
+    val sleepMinutes: Int?,
+    val sleepDeepMinutes: Int?,
+    val sleepLightMinutes: Int?,
+    val sleepRemMinutes: Int?,
+    val sleepAwakeMinutes: Int?,
+    val sleepStartEpochMillis: Long?,
+    val sleepEndEpochMillis: Long?,
+    val restingHr: Int?,
+    val updatedAtEpochMillis: Long,
+)

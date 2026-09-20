@@ -7,9 +7,11 @@ import com.painani.app.data.local.PainaniDatabase
 import com.painani.app.data.repository.DataStoreProfileRepository
 import com.painani.app.data.repository.RoomBodyStatsRepository
 import com.painani.app.data.repository.RoomCalendarEventRepository
+import com.painani.app.data.repository.RoomHealthDataRepository
 import com.painani.app.data.repository.RoomSessionRepository
 import com.painani.app.domain.repository.BodyStatsRepository
 import com.painani.app.domain.repository.CalendarEventRepository
+import com.painani.app.domain.repository.HealthDataRepository
 import com.painani.app.domain.repository.ProfileRepository
 import com.painani.app.domain.repository.SessionRepository
 import com.painani.app.tracking.LocationRunTracker
@@ -24,12 +26,15 @@ class AppContainer(app: Application) {
     val calendarEventRepository: CalendarEventRepository by lazy { RoomCalendarEventRepository(database) }
     val profileRepository: ProfileRepository by lazy { DataStoreProfileRepository(app) }
     val bodyStatsRepository: BodyStatsRepository by lazy { RoomBodyStatsRepository(database) }
+    val healthDataRepository: HealthDataRepository by lazy { RoomHealthDataRepository(database) }
 
     /** Shared between the foreground service (keeps it alive) and the run screen (observes it). */
     val runTracker: LocationRunTracker by lazy { LocationRunTracker(app) }
 
     val healthConnect: HealthConnectManager by lazy { HealthConnectManager(app) }
-    val healthSync: HealthSync by lazy { HealthSync(app, healthConnect, sessionRepository, bodyStatsRepository) }
+    val healthSync: HealthSync by lazy {
+        HealthSync(app, healthConnect, sessionRepository, bodyStatsRepository, healthDataRepository)
+    }
 }
 
 class PainaniApp : Application() {
@@ -39,5 +44,7 @@ class PainaniApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        // Registers (or cancels) the periodic Health Connect pull according to the saved setting.
+        container.healthSync.ensureScheduled()
     }
 }
