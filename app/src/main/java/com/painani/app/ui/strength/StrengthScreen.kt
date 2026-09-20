@@ -1,5 +1,6 @@
 package com.painani.app.ui.strength
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardOptions
@@ -20,6 +22,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -34,6 +37,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -173,47 +178,59 @@ private fun SetRow(
     onDone: () -> Unit,
     onRemove: () -> Unit,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        OutlinedButton(
-            onClick = onPickExercise,
-            modifier = Modifier.weight(2f).height(56.dp),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp),
-        ) {
-            Text(
-                text = draft.exercise.ifBlank { "Exercise" },
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (draft.exercise.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        OutlinedTextField(
-            value = draft.reps,
-            onValueChange = { onChange(draft.copy(reps = it)) },
-            label = { Text("Reps") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.weight(1f),
-            singleLine = true,
-        )
-        OutlinedTextField(
-            value = draft.weightKg,
-            onValueChange = { onChange(draft.copy(weightKg = it)) },
-            label = { Text("kg") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.weight(1f),
-            singleLine = true,
-        )
-        IconButton(
-            onClick = onDone,
-            colors = IconButtonDefaults.iconButtonColors(
-                contentColor = if (draft.done) MaterialTheme.colorScheme.onPrimary else NothingRed,
-                containerColor = if (draft.done) NothingRed else androidx.compose.ui.graphics.Color.Transparent,
-            ),
-        ) {
-            Icon(Icons.Default.Check, contentDescription = if (draft.done) "Set ${index + 1} done" else "Mark set ${index + 1} done")
-        }
-        IconButton(onClick = onRemove) {
-            Icon(Icons.Default.Close, contentDescription = "Remove set ${index + 1}")
+    // Two rows: the exercise gets the full width, reps and weight share the line below.
+    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "${index + 1}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.width(20.dp),
+                )
+                Text(
+                    text = draft.exercise.ifBlank { "Choose exercise" },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (draft.exercise.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(MaterialTheme.shapes.small)
+                        .clickable(onClick = onPickExercise)
+                        .padding(vertical = 8.dp, horizontal = 4.dp),
+                )
+                IconButton(
+                    onClick = onDone,
+                    colors = IconButtonDefaults.iconButtonColors(
+                        contentColor = if (draft.done) MaterialTheme.colorScheme.onPrimary else NothingRed,
+                        containerColor = if (draft.done) NothingRed else Color.Transparent,
+                    ),
+                ) {
+                    Icon(Icons.Default.Check, contentDescription = if (draft.done) "Set ${index + 1} done" else "Mark set ${index + 1} done")
+                }
+                IconButton(onClick = onRemove) {
+                    Icon(Icons.Default.Close, contentDescription = "Remove set ${index + 1}")
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = draft.reps,
+                    onValueChange = { onChange(draft.copy(reps = it)) },
+                    label = { Text("Reps") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = draft.weightKg,
+                    onValueChange = { onChange(draft.copy(weightKg = it)) },
+                    label = { Text("Weight (kg)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                )
+            }
         }
     }
 }
