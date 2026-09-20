@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
     <application
         android:name=".OdysseusApp"
@@ -28,7 +31,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Foreground service that will host the GPS tracker (ported from RunnerUp). Stubbed for now. -->
+        <!-- Foreground service that keeps the GPS tracker alive while a run is in progress. -->
         <service
             android:name=".tracking.RunTrackingService"
             android:exported="false"

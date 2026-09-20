@@ -20,10 +20,21 @@ data class Session(
     val distanceMeters: Double? = null,
     val splits: List<Split> = emptyList(),
     val sets: List<ExerciseSet> = emptyList(),
+    /** Raw GPS trace for a run. Empty for manual entries and strength sessions. */
+    val trackPoints: List<TrackPoint> = emptyList(),
 ) {
     fun localDate(zone: ZoneId = ZoneId.systemDefault()): LocalDate =
         startedAt.atZone(zone).toLocalDate()
 }
+
+/** A single GPS fix along a run. */
+data class TrackPoint(
+    val timeMillis: Long,
+    val latitude: Double,
+    val longitude: Double,
+    val altitudeMeters: Double? = null,
+    val accuracyMeters: Float? = null,
+)
 
 /** One lap/split of a run — typically per km or per mile. */
 data class Split(

@@ -84,4 +84,42 @@ data class SessionWithDetails(
     val splits: List<SplitEntity>,
     @Relation(entity = ExerciseSetEntity::class, parentColumn = "id", entityColumn = "sessionId")
     val sets: List<ExerciseSetWithExercise>,
+    @Relation(parentColumn = "id", entityColumn = "sessionId")
+    val trackPoints: List<TrackPointEntity>,
+)
+
+@Entity(
+    tableName = "track_points",
+    foreignKeys = [ForeignKey(
+        entity = SessionEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["sessionId"],
+        onDelete = ForeignKey.CASCADE,
+    )],
+    indices = [Index("sessionId")],
+)
+data class TrackPointEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val sessionId: Long,
+    val timeMillis: Long,
+    val latitude: Double,
+    val longitude: Double,
+    val altitudeMeters: Double?,
+    val accuracyMeters: Float?,
+)
+
+@Entity(
+    tableName = "calendar_events",
+    indices = [Index("startEpochMillis"), Index("source")],
+)
+data class CalendarEventEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val uid: String,
+    val summary: String,
+    val description: String,
+    val location: String,
+    val startEpochMillis: Long,
+    val endEpochMillis: Long,
+    val allDay: Boolean,
+    val source: String,
 )

@@ -8,11 +8,13 @@ import com.odysseus.app.data.local.entity.ExerciseSetWithExercise
 import com.odysseus.app.data.local.entity.SessionEntity
 import com.odysseus.app.data.local.entity.SessionWithDetails
 import com.odysseus.app.data.local.entity.SplitEntity
+import com.odysseus.app.data.local.entity.TrackPointEntity
 import com.odysseus.app.domain.model.Exercise
 import com.odysseus.app.domain.model.ExerciseSet
 import com.odysseus.app.domain.model.Session
 import com.odysseus.app.domain.model.SessionType
 import com.odysseus.app.domain.model.Split
+import com.odysseus.app.domain.model.TrackPoint
 import com.odysseus.app.domain.repository.SessionRepository
 import java.time.Instant
 import java.time.LocalDate
@@ -42,8 +44,10 @@ class RoomSessionRepository(
         val id = dao.upsertSession(session.toEntity()).let { if (it == -1L) session.id else it }
         dao.deleteSplitsFor(id)
         dao.deleteSetsFor(id)
+        dao.deleteTrackPointsFor(id)
         dao.insertSplits(session.splits.map { it.toEntity(id) })
         dao.insertSets(session.sets.map { it.toEntity(id) })
+        dao.insertTrackPoints(session.trackPoints.map { it.toEntity(id) })
         id
     }
 
@@ -72,6 +76,7 @@ class RoomSessionRepository(
         distanceMeters = session.distanceMeters,
         splits = splits.sortedBy { it.index }.map { it.toDomain() },
         sets = sets.sortedBy { it.set.setIndex }.map { it.toDomain() },
+        trackPoints = trackPoints.sortedBy { it.timeMillis }.map { it.toDomain() },
     )
 
     private fun Session.toEntity() = SessionEntity(
@@ -89,6 +94,12 @@ class RoomSessionRepository(
         SplitEntity(id, sessionId, index, distanceMeters, durationMillis, avgHeartRate)
 
     private fun ExerciseEntity.toDomain() = Exercise(id, name)
+
+    private fun TrackPointEntity.toDomain() =
+        TrackPoint(timeMillis, latitude, longitude, altitudeMeters, accuracyMeters)
+
+    private fun TrackPoint.toEntity(sessionId: Long) =
+        TrackPointEntity(0, sessionId, timeMillis, latitude, longitude, altitudeMeters, accuracyMeters)
 
     private fun ExerciseSetWithExercise.toDomain() =
         ExerciseSet(set.id, exercise.toDomain(), set.setIndex, set.reps, set.weightKg)

@@ -2,8 +2,11 @@ package com.odysseus.app
 
 import android.app.Application
 import com.odysseus.app.data.local.OdysseusDatabase
+import com.odysseus.app.data.repository.RoomCalendarEventRepository
 import com.odysseus.app.data.repository.RoomSessionRepository
+import com.odysseus.app.domain.repository.CalendarEventRepository
 import com.odysseus.app.domain.repository.SessionRepository
+import com.odysseus.app.tracking.LocationRunTracker
 
 /**
  * Hand-rolled dependency container. Small enough that Hilt would be more ceremony than benefit;
@@ -12,6 +15,10 @@ import com.odysseus.app.domain.repository.SessionRepository
 class AppContainer(app: Application) {
     val database: OdysseusDatabase by lazy { OdysseusDatabase.build(app) }
     val sessionRepository: SessionRepository by lazy { RoomSessionRepository(database) }
+    val calendarEventRepository: CalendarEventRepository by lazy { RoomCalendarEventRepository(database) }
+
+    /** Shared between the foreground service (keeps it alive) and the run screen (observes it). */
+    val runTracker: LocationRunTracker by lazy { LocationRunTracker(app) }
 }
 
 class OdysseusApp : Application() {

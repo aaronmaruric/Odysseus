@@ -91,7 +91,8 @@ fun OdysseusNavHost(container: AppContainer) {
         ) {
             composable(Route.Calendar.path) {
                 CalendarScreen(
-                    repository = container.sessionRepository,
+                    sessionRepository = container.sessionRepository,
+                    eventRepository = container.calendarEventRepository,
                     onDayClick = { date -> navController.navigate(Route.DayDetail.build(date)) },
                 )
             }
@@ -100,11 +101,12 @@ fun OdysseusNavHost(container: AppContainer) {
                 DayDetailScreen(
                     date = date,
                     repository = container.sessionRepository,
+                    eventRepository = container.calendarEventRepository,
                     onBack = { navController.popBackStack() },
                 )
             }
             composable(Route.Run.path) {
-                RunScreen(repository = container.sessionRepository)
+                RunScreen(repository = container.sessionRepository, tracker = container.runTracker)
             }
             composable(Route.Strength.path) {
                 StrengthScreen(repository = container.sessionRepository)

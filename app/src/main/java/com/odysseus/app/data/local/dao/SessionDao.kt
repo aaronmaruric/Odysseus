@@ -11,6 +11,7 @@ import com.odysseus.app.data.local.entity.ExerciseSetEntity
 import com.odysseus.app.data.local.entity.SessionEntity
 import com.odysseus.app.data.local.entity.SessionWithDetails
 import com.odysseus.app.data.local.entity.SplitEntity
+import com.odysseus.app.data.local.entity.TrackPointEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -40,6 +41,12 @@ interface SessionDao {
 
     @Query("DELETE FROM exercise_sets WHERE sessionId = :sessionId")
     suspend fun deleteSetsFor(sessionId: Long)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTrackPoints(points: List<TrackPointEntity>)
+
+    @Query("DELETE FROM track_points WHERE sessionId = :sessionId")
+    suspend fun deleteTrackPointsFor(sessionId: Long)
 
     @Query("DELETE FROM sessions WHERE id = :id")
     suspend fun deleteSession(id: Long)

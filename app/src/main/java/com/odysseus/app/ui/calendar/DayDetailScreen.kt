@@ -26,8 +26,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.odysseus.app.domain.model.CalendarEvent
 import com.odysseus.app.domain.model.Session
 import com.odysseus.app.domain.model.SessionType
+import com.odysseus.app.domain.repository.CalendarEventRepository
 import com.odysseus.app.domain.repository.SessionRepository
 import com.odysseus.app.ui.theme.NothingRed
 import java.time.LocalDate
@@ -38,9 +40,16 @@ import java.util.Locale
 /** Shows every session on a given day with its splits or sets laid out in full. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DayDetailScreen(date: LocalDate, repository: SessionRepository, onBack: () -> Unit) {
-    val flow = remember(date) { repository.sessionsOn(date) }
-    val sessions by flow.collectAsStateWithLifecycle(initialValue = emptyList())
+fun DayDetailScreen(
+    date: LocalDate,
+    repository: SessionRepository,
+    eventRepository: CalendarEventRepository,
+    onBack: () -> Unit,
+) {
+    val sessionFlow = remember(date) { repository.sessionsOn(date) }
+    val eventFlow = remember(date) { eventRepository.eventsOn(date) }
+    val sessions by sessionFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    val events by eventFlow.collectAsStateWithLifecycle(initialValue = emptyList())
 
     Scaffold(
         topBar = {
@@ -59,7 +68,7 @@ fun DayDetailScreen(date: LocalDate, repository: SessionRepository, onBack: () -
             )
         },
     ) { padding ->
-        if (sessions.isEmpty()) {
+        if (sessions.isEmpty() && events.isEmpty()) {
             Column(
                 modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -73,8 +82,36 @@ fun DayDetailScreen(date: LocalDate, repository: SessionRepository, onBack: () -
             contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(sessions, key = { it.id }) { session ->
+            items(events, key = { "e${it.id}" }) { event ->
+                EventCard(event)
+            }
+            items(sessions, key = { "s${it.id}" }) { session ->
                 SessionCard(session)
+            }
+        }
+    }
+}
+
+@Composable
+private fun EventCard(event: CalendarEvent) {
+    val timeFmt = DateTimeFormatter.ofPattern("HH:mm")
+    val zone = ZoneId.systemDefault()
+    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("PLANNED", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    text = if (event.allDay) "ALL DAY"
+                    else event.start.atZone(zone).format(timeFmt) + " – " + event.end.atZone(zone).format(timeFmt),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            Text(event.summary, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp))
+            if (event.location.isNotBlank()) {
+                Text(event.location, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (event.description.isNotBlank()) {
+                Text(event.description, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
             }
         }
     }

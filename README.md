@@ -28,7 +28,8 @@ app/src/main/java/com/odysseus/app/
 ├── data/            Room implementation of the domain repository.
 │   ├── local/       Entities, DAO, database
 │   └── repository/  RoomSessionRepository (+ entity<->domain mappers)
-├── tracking/        GPS engine. RunTracker interface + foreground service stub.
+├── ics/             Pure Kotlin iCalendar parser (folding, TZID, DURATION, RRULE expansion)
+├── tracking/        GPS engine: RunTracker interface, LocationManager implementation, foreground service
 ├── ui/
 │   ├── calendar/    Month grid with run/strength markers; day detail with splits/sets tables
 │   ├── run/         Run logging (manual entry until GPS is ported)
@@ -44,7 +45,8 @@ Multiplatform module if an iOS build is ever wanted.
 
 ## Roadmap
 
-- [ ] Port RunnerUp GPS tracker into `tracking/` and replace the manual run form with live tracking
+- [x] Live GPS tracking with km splits (LocationManager, foreground service, wake lock)
+- [x] Import .ics calendars (training plans, races) and show them alongside sessions
 - [ ] Exercise picker + rest timer on the strength screen (Flexify reference)
 - [ ] Week and agenda calendar views (Fossify reference)
 - [ ] Per-exercise and per-distance progress charts
