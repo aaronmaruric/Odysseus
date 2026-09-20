@@ -3,7 +3,7 @@ package com.odysseus.app.ui.navigation
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.DirectionsRun
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -46,7 +46,7 @@ private data class TopLevel(val route: Route, val labelRes: Int, val icon: Image
 
 private val topLevel = listOf(
     TopLevel(Route.Calendar, R.string.nav_calendar, Icons.Default.CalendarMonth),
-    TopLevel(Route.Run, R.string.nav_run, Icons.Default.DirectionsRun),
+    TopLevel(Route.Run, R.string.nav_run, Icons.AutoMirrored.Filled.DirectionsRun),
     TopLevel(Route.Strength, R.string.nav_strength, Icons.Default.FitnessCenter),
 )
 
