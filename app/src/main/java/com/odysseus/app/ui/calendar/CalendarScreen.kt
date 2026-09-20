@@ -5,14 +5,15 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -90,16 +91,12 @@ fun CalendarScreen(
                     onDayClick = onDayClick,
                 )
             }
-            CalendarMode.WEEK -> {
-                WeekdayRow()
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(bottom = 4.dp))
-                WeekView(
-                    start = state.rangeStart,
-                    sessionsByDate = state.sessionsByDate,
-                    eventsByDate = state.eventsByDate,
-                    onDayClick = onDayClick,
-                )
-            }
+            CalendarMode.WEEK -> WeekView(
+                start = state.rangeStart,
+                sessionsByDate = state.sessionsByDate,
+                eventsByDate = state.eventsByDate,
+                onDayClick = onDayClick,
+            )
             CalendarMode.DAY -> DayContent(
                 sessions = state.sessionsByDate[state.anchor].orEmpty(),
                 events = state.eventsByDate[state.anchor].orEmpty(),
@@ -285,6 +282,11 @@ private fun EventChip(text: String) {
 
 // --- week -----------------------------------------------------------------------------
 
+/**
+ * Seven day sections stacked vertically. Each is at least a seventh of the screen so an empty
+ * week still fills it, and grows when a day has more to show. Detail sits between the month
+ * grid (dots) and the day view (full cards): one line per item with its headline numbers.
+ */
 @Composable
 private fun WeekView(
     start: LocalDate,
@@ -293,41 +295,122 @@ private fun WeekView(
     onDayClick: (LocalDate) -> Unit,
 ) {
     val today = LocalDate.now()
-    Row(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        (0..6).forEach { offset ->
-            val date = start.plusDays(offset.toLong())
-            val isToday = date == today
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .clip(MaterialTheme.shapes.small)
-                    .then(if (isToday) Modifier.border(1.dp, NothingRed, MaterialTheme.shapes.small) else Modifier)
-                    .clickable { onDayClick(date) }
-                    .padding(horizontal = 2.dp, vertical = 4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = date.dayOfMonth.toString(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
-                    color = if (isToday) NothingRed else MaterialTheme.colorScheme.onSurface,
-                )
-                eventsByDate[date].orEmpty().forEach { EventChip(it.summary) }
-                sessionsByDate[date].orEmpty().forEach { s ->
-                    Text(
-                        text = s.summaryLabel(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (s.type == SessionType.RUN) RunColor else StrengthColor,
-                        maxLines = 1,
-                    )
+    val zone = ZoneId.systemDefault()
+    val timeFmt = DateTimeFormatter.ofPattern("HH:mm")
+
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val minSection = maxHeight / 7
+        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            (0..6).forEach { offset ->
+                val date = start.plusDays(offset.toLong())
+                val isToday = date == today
+                val events = eventsByDate[date].orEmpty()
+                val sessions = sessionsByDate[date].orEmpty()
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = minSection)
+                        .clickable { onDayClick(date) }
+                        .padding(vertical = 6.dp),
+                ) {
+                    // Date gutter: weekday initial over the day number, red for today.
+                    Column(
+                        modifier = Modifier.width(44.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isToday) NothingRed else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = date.dayOfMonth.toString(),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = if (isToday) NothingRed else MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (events.isEmpty() && sessions.isEmpty()) {
+                            Text(
+                                "REST",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+                        }
+                        events.forEach { e ->
+                            WeekLine(
+                                time = if (e.allDay) "ALL DAY" else e.start.atZone(zone).format(timeFmt),
+                                label = e.summary,
+                                detail = e.location,
+                                accent = MaterialTheme.colorScheme.outlineVariant,
+                            )
+                        }
+                        sessions.forEach { s ->
+                            WeekLine(
+                                time = s.startedAt.atZone(zone).format(timeFmt),
+                                label = if (s.type == SessionType.RUN) "RUN" else "STRENGTH",
+                                detail = s.weekDetail(),
+                                accent = if (s.type == SessionType.RUN) RunColor else StrengthColor,
+                            )
+                        }
+                    }
                 }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
+    }
+}
+
+/** One item in the week view: a coloured bar, time, label and the headline numbers. */
+@Composable
+private fun WeekLine(time: String, label: String, detail: String, accent: androidx.compose.ui.graphics.Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .height(28.dp)
+                .background(accent, MaterialTheme.shapes.extraSmall),
+        )
+        Spacer(Modifier.width(8.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(time, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (detail.isNotBlank()) {
+                Text(
+                    detail,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+/** e.g. "5.20 km · 26:30 · 5:05 /km" for a run, "Squat, Bench · 8 sets" for strength. */
+private fun Session.weekDetail(): String = when (type) {
+    SessionType.RUN -> buildList {
+        distanceMeters?.let { add(String.format(Locale.getDefault(), "%.2f km", it / 1000)) }
+        add(formatDuration(durationMillis))
+        val d = distanceMeters
+        if (d != null && d > 0) add(formatPace((durationMillis / 1000.0) / (d / 1000.0)))
+    }.joinToString(" · ")
+    SessionType.STRENGTH -> {
+        val names = sets.map { it.exercise.name }.distinct()
+        val head = names.take(3).joinToString(", ") + if (names.size > 3) "…" else ""
+        listOf(head, "${sets.size} sets").filter { it.isNotBlank() }.joinToString(" · ")
     }
 }
 

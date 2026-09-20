@@ -111,13 +111,16 @@ val NothingTypography = Typography(
 /** Style for big numbers (distance, pace, elapsed time). */
 val Numeral: TextStyle = TextStyle(fontFamily = Display, fontSize = 40.sp, letterSpacing = 1.sp)
 
-/** Nothing leans on circles and pills; tight corners elsewhere. */
+/**
+ * Tight corners. Buttons get their pill shape from ButtonDefaults, not from here; extraLarge is
+ * what dialogs and date pickers clip to, so it must stay a modest radius or they become ovals.
+ */
 val NothingShapes = Shapes(
     extraSmall = RoundedCornerShape(2.dp),
     small = RoundedCornerShape(4.dp),
     medium = RoundedCornerShape(8.dp),
-    large = RoundedCornerShape(16.dp),
-    extraLarge = RoundedCornerShape(50),
+    large = RoundedCornerShape(12.dp),
+    extraLarge = RoundedCornerShape(16.dp),
 )
 
 @Composable
