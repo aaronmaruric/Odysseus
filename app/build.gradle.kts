@@ -6,10 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.odysseus.app"
+    namespace = "com.painani.app"
     compileSdk = 35
 
     defaultConfig {
+        // Kept from the original name so Android treats this as the same installed app (data survives).
         applicationId = "com.odysseus.app"
         // minSdk 26 gives us java.time without desugaring.
         minSdk = 26

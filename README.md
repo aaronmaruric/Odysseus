@@ -1,4 +1,4 @@
-# Odysseus
+# Painani
 
 A personal training log for Android: GPS runs with splits, strength workouts with sets, and a
 calendar that shows both at a glance.
@@ -21,7 +21,7 @@ JDK it needs. From the command line, once `local.properties` points at an SDK:
 ## Layout
 
 ```
-app/src/main/java/com/odysseus/app/
+app/src/main/java/com/painani/app/
 ├── domain/          Pure Kotlin — models + repository interface. No Android imports.
 │   ├── model/       Session, Split, Exercise, ExerciseSet, CalendarEvent, UserProfile, WeightEntry
 │   └── repository/  SessionRepository, CalendarEventRepository, ProfileRepository, BodyStatsRepository
@@ -37,7 +37,7 @@ app/src/main/java/com/odysseus/app/
 │   ├── settings/    Profile, weight log, .ics import
 │   ├── navigation/  Bottom-nav host and routes
 │   └── theme/       Material 3 theme
-├── OdysseusApp.kt   Application + hand-rolled DI container
+├── PainaniApp.kt   Application + hand-rolled DI container
 └── MainActivity.kt
 ```
 
