@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Odysseus</string>
+    <string name="nav_calendar">Calendar</string>
+    <string name="nav_run">Run</string>
+    <string name="nav_strength">Strength</string>
+    <string name="tracking_notification_title">Run in progress</string>
+</resources>
