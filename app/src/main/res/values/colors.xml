@@ -1,3 +1,4 @@
 <resources>
-    <color name="ic_launcher_background">#000000</color>
+    <!-- Matches the flat colour the launcher foreground is feathered into. -->
+    <color name="ic_launcher_background">#090A10</color>
 </resources>
