@@ -22,6 +22,9 @@ data class Session(
     val sets: List<ExerciseSet> = emptyList(),
     /** Raw GPS trace for a run. Empty for manual entries and strength sessions. */
     val trackPoints: List<TrackPoint> = emptyList(),
+    /** Heart-rate summary, filled from Health Connect when available. */
+    val avgHeartRate: Int? = null,
+    val maxHeartRate: Int? = null,
 ) {
     fun localDate(zone: ZoneId = ZoneId.systemDefault()): LocalDate =
         startedAt.atZone(zone).toLocalDate()

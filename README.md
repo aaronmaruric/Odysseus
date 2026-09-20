@@ -27,7 +27,8 @@ app/src/main/java/com/painani/app/
 │   └── repository/  SessionRepository, CalendarEventRepository, ProfileRepository, BodyStatsRepository
 ├── data/            Room implementation of the domain repository.
 │   ├── local/       Entities, DAO, database
-│   └── repository/  RoomSessionRepository (+ entity<->domain mappers)
+│   ├── repository/  Room/DataStore repositories (+ entity<->domain mappers)
+│   └── health/      Health Connect client wrapper and sync policy
 ├── ics/             Pure Kotlin iCalendar parser (folding, TZID, DURATION, RRULE expansion)
 ├── tracking/        GPS engine: RunTracker interface, LocationManager implementation, foreground service
 ├── ui/
@@ -52,5 +53,6 @@ Multiplatform module if an iOS build is ever wanted.
 - [x] Profile and weight log
 - [x] Exercise picker + rest timer on the strength screen
 - [x] Edit / delete imported calendar events
+- [x] Health Connect: heart rate on runs and splits, daily steps / resting HR / sleep, two-way weight sync, sessions written back
 - [ ] Per-exercise and per-distance progress charts
 - [ ] GPX/TCX export

@@ -22,6 +22,9 @@ interface SessionRepository {
 
     suspend fun delete(id: Long)
 
+    /** Updates only the heart-rate summary and per-split averages, leaving everything else untouched. */
+    suspend fun updateHeartRate(id: Long, avg: Int?, max: Int?, splitAverages: List<Int?>)
+
     fun exercises(): Flow<List<Exercise>>
 
     suspend fun saveExercise(exercise: Exercise): Long

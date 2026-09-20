@@ -53,10 +53,14 @@ class RoomBodyStatsRepository(private val db: PainaniDatabase) : BodyStatsReposi
     private val dao get() = db.weightEntryDao()
 
     override fun weights(): Flow<List<WeightEntry>> =
-        dao.all().map { rows -> rows.map { WeightEntry(it.id, Instant.ofEpochMilli(it.atEpochMillis), it.weightKg, it.note) } }
+        dao.all().map { rows ->
+            rows.map { WeightEntry(it.id, Instant.ofEpochMilli(it.atEpochMillis), it.weightKg, it.note, it.sourceId) }
+        }
 
     override suspend fun addWeight(entry: WeightEntry): Long =
-        dao.insert(WeightEntryEntity(0, entry.at.toEpochMilli(), entry.weightKg, entry.note))
+        dao.insert(WeightEntryEntity(0, entry.at.toEpochMilli(), entry.weightKg, entry.note, entry.sourceId))
 
     override suspend fun deleteWeight(id: Long) = dao.delete(id)
+
+    override suspend fun knownSourceIds(): Set<String> = dao.sourceIds().toSet()
 }

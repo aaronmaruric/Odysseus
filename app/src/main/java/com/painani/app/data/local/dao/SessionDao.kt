@@ -51,6 +51,12 @@ interface SessionDao {
     @Query("DELETE FROM sessions WHERE id = :id")
     suspend fun deleteSession(id: Long)
 
+    @Query("UPDATE sessions SET avgHeartRate = :avg, maxHeartRate = :max WHERE id = :id")
+    suspend fun updateSessionHeartRate(id: Long, avg: Int?, max: Int?)
+
+    @Query("UPDATE splits SET avgHeartRate = :avg WHERE sessionId = :sessionId AND `index` = :index")
+    suspend fun updateSplitHeartRate(sessionId: Long, index: Int, avg: Int?)
+
     @Query("SELECT * FROM exercises ORDER BY name ASC")
     fun exercises(): Flow<List<ExerciseEntity>>
 

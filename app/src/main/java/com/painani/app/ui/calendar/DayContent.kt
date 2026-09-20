@@ -134,7 +134,8 @@ fun SessionCard(session: Session) {
             }
             Text(
                 text = "Duration ${formatDuration(session.durationMillis)}" +
-                    (session.distanceMeters?.let { " · %.2f km".format(Locale.getDefault(), it / 1000) } ?: ""),
+                    (session.distanceMeters?.let { " · %.2f km".format(Locale.getDefault(), it / 1000) } ?: "") +
+                    (session.avgHeartRate?.let { " · ♥ $it avg" + (session.maxHeartRate?.let { m -> " / $m max" } ?: "") } ?: ""),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 4.dp),
             )
@@ -154,14 +155,17 @@ fun SessionCard(session: Session) {
 private fun SplitsTable(session: Session) {
     if (session.splits.isEmpty()) return
     HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-    TableHeader("SPLIT", "KM", "TIME", "PACE")
+    val hasHr = session.splits.any { it.avgHeartRate != null }
+    if (hasHr) TableHeader("SPLIT", "KM", "TIME", "PACE", "♥") else TableHeader("SPLIT", "KM", "TIME", "PACE")
     session.splits.forEach { split ->
-        TableRow(
+        val cells = mutableListOf(
             "${split.index + 1}",
             "%.2f".format(Locale.getDefault(), split.distanceMeters / 1000),
             formatDuration(split.durationMillis),
             formatPace(split.paceSecPerKm),
         )
+        if (hasHr) cells += split.avgHeartRate?.toString() ?: "--"
+        TableRow(*cells.toTypedArray())
     }
 }
 

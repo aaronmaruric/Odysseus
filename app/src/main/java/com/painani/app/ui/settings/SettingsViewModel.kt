@@ -6,6 +6,10 @@ import android.provider.OpenableColumns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.painani.app.data.health.DailyReadout
+import com.painani.app.data.health.HealthConnectManager
+import com.painani.app.data.health.HealthStatus
+import com.painani.app.data.health.HealthSync
 import com.painani.app.domain.model.UserProfile
 import com.painani.app.domain.model.WeightEntry
 import com.painani.app.domain.repository.BodyStatsRepository
@@ -15,6 +19,8 @@ import com.painani.app.ics.IcsParser
 import java.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -30,11 +36,55 @@ data class SettingsUiState(
     val loaded: Boolean = false,
 )
 
+data class HealthUiState(
+    val status: HealthStatus = HealthStatus.UNSUPPORTED,
+    val connected: Boolean = false,
+    val readout: DailyReadout? = null,
+    val lastSync: Instant? = null,
+    val syncing: Boolean = false,
+)
+
 class SettingsViewModel(
     private val profiles: ProfileRepository,
     private val bodyStats: BodyStatsRepository,
     private val events: CalendarEventRepository,
+    private val health: HealthConnectManager,
+    private val healthSync: HealthSync,
 ) : ViewModel() {
+
+    private val _health = MutableStateFlow(HealthUiState(status = health.status))
+    val healthState: StateFlow<HealthUiState> = _health
+
+    val healthPermissions = HealthConnectManager.PERMISSIONS
+    val healthPermissionContract get() = health.permissionContract
+
+    init {
+        refreshHealth()
+        viewModelScope.launch { healthSync.lastSyncTime.collect { t -> _health.update { it.copy(lastSync = t) } } }
+    }
+
+    /** Re-checks availability and permissions, then loads the daily readout if connected. */
+    fun refreshHealth() {
+        viewModelScope.launch {
+            val status = health.status
+            val connected = runCatching { health.hasAllPermissions() }.getOrDefault(false)
+            _health.update { it.copy(status = status, connected = connected) }
+            if (connected) {
+                val readout = runCatching { health.dailyReadout() }.getOrNull()
+                _health.update { it.copy(readout = readout) }
+            }
+        }
+    }
+
+    fun syncHealthNow() {
+        viewModelScope.launch {
+            _health.update { it.copy(syncing = true) }
+            val msg = runCatching { healthSync.syncNow() }.getOrElse { "Sync failed: ${it.message}" }
+            _health.update { it.copy(syncing = false) }
+            _messages.tryEmit(msg)
+            refreshHealth()
+        }
+    }
 
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val messages: SharedFlow<String> = _messages
@@ -56,7 +106,9 @@ class SettingsViewModel(
 
     fun logWeight(weightKg: Double, note: String) {
         viewModelScope.launch {
-            bodyStats.addWeight(WeightEntry(at = Instant.now(), weightKg = weightKg, note = note.trim()))
+            val entry = WeightEntry(at = Instant.now(), weightKg = weightKg, note = note.trim())
+            val id = bodyStats.addWeight(entry)
+            healthSync.onWeightLogged(entry.copy(id = id))
         }
     }
 
@@ -100,9 +152,11 @@ class SettingsViewModel(
         private val profiles: ProfileRepository,
         private val bodyStats: BodyStatsRepository,
         private val events: CalendarEventRepository,
+        private val health: HealthConnectManager,
+        private val healthSync: HealthSync,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            SettingsViewModel(profiles, bodyStats, events) as T
+            SettingsViewModel(profiles, bodyStats, events, health, healthSync) as T
     }
 }

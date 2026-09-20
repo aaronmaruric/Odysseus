@@ -22,6 +22,8 @@ data class WeightEntry(
     val at: Instant,
     val weightKg: Double,
     val note: String = "",
+    /** Id of the external record this came from (e.g. a Health Connect record), so syncs do not duplicate. */
+    val sourceId: String? = null,
 )
 
 /** Body mass index from the latest weight and profile height; null when either is missing. */

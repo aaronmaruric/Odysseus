@@ -42,6 +42,7 @@ import com.painani.app.domain.model.Exercise
 import com.painani.app.domain.model.ExerciseSet
 import com.painani.app.domain.model.Session
 import com.painani.app.domain.model.SessionType
+import com.painani.app.data.health.HealthSync
 import com.painani.app.domain.repository.SessionRepository
 import com.painani.app.ui.theme.NothingRed
 import java.time.Instant
@@ -61,7 +62,7 @@ private data class SetDraft(
  * them (each tick starts the rest timer), save the workout at the end.
  */
 @Composable
-fun StrengthScreen(repository: SessionRepository) {
+fun StrengthScreen(repository: SessionRepository, healthSync: HealthSync) {
     val drafts = remember { mutableStateListOf(SetDraft()) }
     var notes by remember { mutableStateOf("") }
     var pickingFor by remember { mutableIntStateOf(-1) } // index of the row whose exercise is being chosen
@@ -142,7 +143,7 @@ fun StrengthScreen(repository: SessionRepository) {
                         val id = repository.saveExercise(set.exercise)
                         set.copy(exercise = set.exercise.copy(id = id))
                     }
-                    repository.save(
+                    val id = repository.save(
                         Session(
                             type = SessionType.STRENGTH,
                             startedAt = began,
@@ -151,6 +152,7 @@ fun StrengthScreen(repository: SessionRepository) {
                             sets = resolved,
                         )
                     )
+                    healthSync.onSessionSaved(id)
                     drafts.clear(); drafts.add(SetDraft()); notes = ""; startedAt = null
                     rest.stop()
                     snackbar.showSnackbar("Workout saved")

@@ -26,13 +26,15 @@ import com.painani.app.data.local.entity.WeightEntryEntity
         CalendarEventEntity::class,
         WeightEntryEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
     autoMigrations = [
         // v1 -> v2: adds track_points and calendar_events. Pure additions, so Room derives it.
         AutoMigration(from = 1, to = 2),
         // v2 -> v3: adds weight_entries.
         AutoMigration(from = 2, to = 3),
+        // v3 -> v4: heart-rate columns on sessions, sourceId on weight_entries.
+        AutoMigration(from = 3, to = 4),
     ],
 )
 abstract class PainaniDatabase : RoomDatabase() {

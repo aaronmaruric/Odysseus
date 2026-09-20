@@ -1,5 +1,6 @@
 package com.painani.app.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.ForeignKey
@@ -16,6 +17,8 @@ data class SessionEntity(
     val durationMillis: Long,
     val notes: String,
     val distanceMeters: Double?,
+    @ColumnInfo(defaultValue = "NULL") val avgHeartRate: Int? = null,
+    @ColumnInfo(defaultValue = "NULL") val maxHeartRate: Int? = null,
 )
 
 @Entity(
@@ -130,4 +133,5 @@ data class WeightEntryEntity(
     val atEpochMillis: Long,
     val weightKg: Double,
     val note: String,
+    @ColumnInfo(defaultValue = "NULL") val sourceId: String? = null,
 )

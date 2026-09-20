@@ -1,6 +1,8 @@
 package com.painani.app
 
 import android.app.Application
+import com.painani.app.data.health.HealthConnectManager
+import com.painani.app.data.health.HealthSync
 import com.painani.app.data.local.PainaniDatabase
 import com.painani.app.data.repository.DataStoreProfileRepository
 import com.painani.app.data.repository.RoomBodyStatsRepository
@@ -25,6 +27,9 @@ class AppContainer(app: Application) {
 
     /** Shared between the foreground service (keeps it alive) and the run screen (observes it). */
     val runTracker: LocationRunTracker by lazy { LocationRunTracker(app) }
+
+    val healthConnect: HealthConnectManager by lazy { HealthConnectManager(app) }
+    val healthSync: HealthSync by lazy { HealthSync(app, healthConnect, sessionRepository, bodyStatsRepository) }
 }
 
 class PainaniApp : Application() {

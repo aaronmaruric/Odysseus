@@ -42,6 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.painani.app.domain.model.Session
 import com.painani.app.domain.model.SessionType
 import com.painani.app.domain.model.Split
+import com.painani.app.data.health.HealthSync
 import com.painani.app.domain.repository.SessionRepository
 import com.painani.app.tracking.LocationRunTracker
 import com.painani.app.tracking.RunState
@@ -56,7 +57,7 @@ import java.util.Locale
 import kotlinx.coroutines.launch
 
 @Composable
-fun RunScreen(repository: SessionRepository, tracker: LocationRunTracker) {
+fun RunScreen(repository: SessionRepository, tracker: LocationRunTracker, healthSync: HealthSync) {
     val context = LocalContext.current
     val state by tracker.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
@@ -95,7 +96,8 @@ fun RunScreen(repository: SessionRepository, tracker: LocationRunTracker) {
             return
         }
         scope.launch {
-            repository.save(final.toSession())
+            val id = repository.save(final.toSession())
+            healthSync.onSessionSaved(id)
             snackbar.showSnackbar("Run saved")
         }
     }
@@ -153,7 +155,7 @@ fun RunScreen(repository: SessionRepository, tracker: LocationRunTracker) {
             TextButton(onClick = { showManual = !showManual }) {
                 Text(if (showManual) "HIDE MANUAL ENTRY" else "LOG MANUALLY", style = MaterialTheme.typography.labelMedium)
             }
-            if (showManual) ManualEntry(repository, snackbar)
+            if (showManual) ManualEntry(repository, healthSync, snackbar)
         }
 
         SnackbarHost(snackbar)
@@ -208,7 +210,7 @@ private fun Stat(label: String, value: String) {
 }
 
 @Composable
-private fun ManualEntry(repository: SessionRepository, snackbar: SnackbarHostState) {
+private fun ManualEntry(repository: SessionRepository, healthSync: HealthSync, snackbar: SnackbarHostState) {
     var distanceKm by remember { mutableStateOf("") }
     var minutes by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
@@ -250,7 +252,7 @@ private fun ManualEntry(repository: SessionRepository, snackbar: SnackbarHostSta
                 }
                 val session = buildManualRun(km, min, notes)
                 scope.launch {
-                    repository.save(session)
+                    healthSync.onSessionSaved(repository.save(session))
                     distanceKm = ""; minutes = ""; notes = ""
                     snackbar.showSnackbar("Run saved")
                 }

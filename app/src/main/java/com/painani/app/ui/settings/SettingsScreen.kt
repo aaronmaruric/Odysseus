@@ -17,6 +17,19 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import android.content.Intent
+import android.net.Uri
+import com.painani.app.data.health.HealthConnectManager
+import com.painani.app.data.health.HealthStatus
+import com.painani.app.data.health.HealthSync
+import java.time.Duration
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -70,13 +83,27 @@ fun SettingsScreen(
     profileRepository: ProfileRepository,
     bodyStatsRepository: BodyStatsRepository,
     eventRepository: CalendarEventRepository,
+    healthConnect: HealthConnectManager,
+    healthSync: HealthSync,
     viewModel: SettingsViewModel = viewModel(
-        factory = SettingsViewModel.Factory(profileRepository, bodyStatsRepository, eventRepository),
+        factory = SettingsViewModel.Factory(profileRepository, bodyStatsRepository, eventRepository, healthConnect, healthSync),
     ),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val health by viewModel.healthState.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
+
+    val healthPermissionLauncher = rememberLauncherForActivityResult(viewModel.healthPermissionContract) {
+        viewModel.refreshHealth()
+    }
+    // Permissions can be changed in the system Health Connect screen; re-check whenever we come back.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshHealth() }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(Unit) { viewModel.messages.collect { snackbar.showSnackbar(it) } }
 
@@ -103,6 +130,17 @@ fun SettingsScreen(
             heightCm = state.profile.heightCm,
             onLog = viewModel::logWeight,
             onDelete = viewModel::deleteWeight,
+        )
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        SectionLabel("HEALTH CONNECT")
+        HealthSection(
+            state = health,
+            onConnect = { healthPermissionLauncher.launch(viewModel.healthPermissions) },
+            onInstall = {
+                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(HealthConnectManager.INSTALL_URL))) }
+            },
+            onSync = viewModel::syncHealthNow,
         )
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -138,6 +176,75 @@ fun SettingsScreen(
         Spacer(Modifier.height(24.dp))
         SnackbarHost(snackbar)
     }
+}
+
+@Composable
+private fun HealthSection(
+    state: HealthUiState,
+    onConnect: () -> Unit,
+    onInstall: () -> Unit,
+    onSync: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        when {
+            state.status == HealthStatus.UNSUPPORTED -> Text(
+                "Health Connect is not supported on this device.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            state.status != HealthStatus.AVAILABLE -> {
+                Text(
+                    if (state.status == HealthStatus.UPDATE_REQUIRED) "The Health Connect app needs an update."
+                    else "Health Connect is not installed.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedButton(onClick = onInstall, modifier = Modifier.fillMaxWidth()) { Text("GET HEALTH CONNECT") }
+            }
+            !state.connected -> {
+                Text(
+                    "Pull heart rate, steps, sleep and weigh-ins from your watch or Samsung Health, and write your runs and workouts back.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Button(onClick = onConnect, modifier = Modifier.fillMaxWidth()) { Text("CONNECT") }
+            }
+            else -> {
+                val r = state.readout
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    Stat("STEPS", r?.steps?.let { "%,d".format(it) } ?: "--")
+                    Stat("REST HR", r?.restingHr?.toString() ?: "--")
+                    Stat("SLEEP", r?.sleepLastNight?.let { formatHours(it) } ?: "--")
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Connected", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            state.lastSync?.let { "Last sync " + it.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("d MMM HH:mm")) }
+                                ?: "Runs and workouts sync automatically when saved",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (state.syncing) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = NothingRed, strokeWidth = 2.dp)
+                    } else {
+                        OutlinedButton(onClick = onSync) {
+                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("SYNC NOW")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun formatHours(d: Duration): String {
+    val h = d.toHours()
+    val m = d.minusHours(h).toMinutes()
+    return "${h}h${"%02d".format(m)}"
 }
 
 @Composable

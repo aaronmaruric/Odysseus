@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.painani.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         // Kept from the original name so Android treats this as the same installed app (data survives).
@@ -66,6 +66,7 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.health.connect)
     implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.junit)

@@ -16,4 +16,7 @@ interface WeightEntryDao {
 
     @Query("DELETE FROM weight_entries WHERE id = :id")
     suspend fun delete(id: Long)
+
+    @Query("SELECT sourceId FROM weight_entries WHERE sourceId IS NOT NULL")
+    suspend fun sourceIds(): List<String>
 }

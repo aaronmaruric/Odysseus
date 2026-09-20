@@ -110,16 +110,22 @@ fun PainaniNavHost(container: AppContainer) {
                 )
             }
             composable(Route.Run.path) {
-                RunScreen(repository = container.sessionRepository, tracker = container.runTracker)
+                RunScreen(
+                    repository = container.sessionRepository,
+                    tracker = container.runTracker,
+                    healthSync = container.healthSync,
+                )
             }
             composable(Route.Strength.path) {
-                StrengthScreen(repository = container.sessionRepository)
+                StrengthScreen(repository = container.sessionRepository, healthSync = container.healthSync)
             }
             composable(Route.Settings.path) {
                 SettingsScreen(
                     profileRepository = container.profileRepository,
                     bodyStatsRepository = container.bodyStatsRepository,
                     eventRepository = container.calendarEventRepository,
+                    healthConnect = container.healthConnect,
+                    healthSync = container.healthSync,
                 )
             }
         }
