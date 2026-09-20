@@ -6,7 +6,7 @@
     <!-- Placeholder: a simple "O" ring. Replace via Image Asset wizard later. -->
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#FFFFFF"
+        android:strokeColor="#D71921"
         android:strokeWidth="8"
         android:pathData="M54,30 a24,24 0 1,0 0.01,0 z" />
 </vector>

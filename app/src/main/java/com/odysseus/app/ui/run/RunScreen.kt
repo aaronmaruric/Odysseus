@@ -49,7 +49,7 @@ fun RunScreen(repository: SessionRepository) {
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Log a run", style = MaterialTheme.typography.headlineSmall)
+        Text("LOG A RUN", style = MaterialTheme.typography.titleLarge)
         Text(
             "GPS tracking is not wired up yet. Enter the run manually and it will appear on the calendar " +
                 "with evenly computed kilometre splits.",

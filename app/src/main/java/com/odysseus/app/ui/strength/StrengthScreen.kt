@@ -60,7 +60,7 @@ fun StrengthScreen(repository: SessionRepository) {
     val scope = rememberCoroutineScope()
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Log a workout", style = MaterialTheme.typography.headlineSmall)
+        Text("LOG A WORKOUT", style = MaterialTheme.typography.titleLarge)
 
         LazyColumn(
             modifier = Modifier.weight(1f).padding(top = 12.dp),

@@ -10,7 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Card
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -24,12 +24,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.odysseus.app.domain.model.Session
 import com.odysseus.app.domain.model.SessionType
 import com.odysseus.app.domain.repository.SessionRepository
+import com.odysseus.app.ui.theme.NothingRed
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -45,7 +45,12 @@ fun DayDetailScreen(date: LocalDate, repository: SessionRepository, onBack: () -
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(date.format(DateTimeFormatter.ofPattern("EEEE d MMMM yyyy"))) },
+                title = {
+                    Text(
+                        date.format(DateTimeFormatter.ofPattern("EEE d MMM yyyy")).uppercase(),
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -59,7 +64,7 @@ fun DayDetailScreen(date: LocalDate, repository: SessionRepository, onBack: () -
                 modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("Rest day", style = MaterialTheme.typography.titleMedium)
+                Text("REST DAY", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             return@Scaffold
         }
@@ -78,13 +83,13 @@ fun DayDetailScreen(date: LocalDate, repository: SessionRepository, onBack: () -
 @Composable
 private fun SessionCard(session: Session) {
     val timeFmt = DateTimeFormatter.ofPattern("HH:mm")
-    Card(modifier = Modifier.fillMaxWidth()) {
+    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
-                    text = if (session.type == SessionType.RUN) "Run" else "Strength",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    text = if (session.type == SessionType.RUN) "RUN" else "STRENGTH",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (session.type == SessionType.RUN) NothingRed else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     text = session.startedAt.atZone(ZoneId.systemDefault()).format(timeFmt),
@@ -113,7 +118,7 @@ private fun SessionCard(session: Session) {
 private fun SplitsTable(session: Session) {
     if (session.splits.isEmpty()) return
     HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-    TableHeader("Split", "Dist", "Time", "Pace")
+    TableHeader("SPLIT", "KM", "TIME", "PACE")
     session.splits.forEach { split ->
         TableRow(
             "${split.index + 1}",

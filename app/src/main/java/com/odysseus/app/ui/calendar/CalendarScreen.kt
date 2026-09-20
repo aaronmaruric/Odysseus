@@ -1,6 +1,7 @@
 package com.odysseus.app.ui.calendar
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +38,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.odysseus.app.domain.model.Session
 import com.odysseus.app.domain.model.SessionType
 import com.odysseus.app.domain.repository.SessionRepository
+import com.odysseus.app.ui.theme.NothingRed
 import com.odysseus.app.ui.theme.RunColor
 import com.odysseus.app.ui.theme.StrengthColor
 import java.time.DayOfWeek
@@ -61,6 +64,7 @@ fun CalendarScreen(
             onToday = viewModel::today,
         )
         WeekdayRow()
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(bottom = 4.dp))
         MonthGrid(
             month = state.month,
             sessionsByDate = state.sessionsByDate,
@@ -80,12 +84,14 @@ private fun MonthHeader(month: YearMonth, onPrevious: () -> Unit, onNext: () -> 
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
         }
         Text(
-            text = month.format(formatter),
+            text = month.format(formatter).uppercase(),
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.weight(1f),
             textAlign = TextAlign.Center,
         )
-        TextButton(onClick = onToday) { Text("Today") }
+        TextButton(onClick = onToday) {
+            Text("TODAY", style = MaterialTheme.typography.labelMedium, color = NothingRed)
+        }
         IconButton(onClick = onNext) {
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next month")
         }
@@ -97,7 +103,7 @@ private fun WeekdayRow() {
     Row(modifier = Modifier.fillMaxWidth()) {
         DayOfWeek.entries.forEach { day ->
             Text(
-                text = day.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
+                text = day.getDisplayName(TextStyle.NARROW, Locale.getDefault()).uppercase(),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -151,9 +157,7 @@ private fun DayCell(
         modifier = Modifier
             .aspectRatio(0.85f)
             .clip(MaterialTheme.shapes.small)
-            .then(
-                if (isToday) Modifier.background(MaterialTheme.colorScheme.primaryContainer) else Modifier
-            )
+            .then(if (isToday) Modifier.border(1.dp, NothingRed, MaterialTheme.shapes.small) else Modifier)
             .clickable(onClick = onClick)
             .padding(4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -162,7 +166,7 @@ private fun DayCell(
             text = date.dayOfMonth.toString(),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
-            color = textColor,
+            color = if (isToday) NothingRed else textColor,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.padding(top = 4.dp)) {
             sessions.map { it.type }.distinct().forEach { type ->

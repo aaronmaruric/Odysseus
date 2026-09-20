@@ -8,6 +8,9 @@ import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,6 +30,7 @@ import com.odysseus.app.ui.calendar.CalendarScreen
 import com.odysseus.app.ui.calendar.DayDetailScreen
 import com.odysseus.app.ui.run.RunScreen
 import com.odysseus.app.ui.strength.StrengthScreen
+import com.odysseus.app.ui.theme.NothingRed
 import java.time.LocalDate
 
 sealed class Route(val path: String) {
@@ -54,7 +58,7 @@ fun OdysseusNavHost(container: AppContainer) {
 
     Scaffold(
         bottomBar = {
-            NavigationBar {
+            NavigationBar(containerColor = MaterialTheme.colorScheme.background) {
                 topLevel.forEach { item ->
                     val selected = currentDestination?.hierarchy?.any { it.route == item.route.path } == true
                     NavigationBarItem(
@@ -67,7 +71,14 @@ fun OdysseusNavHost(container: AppContainer) {
                             }
                         },
                         icon = { Icon(item.icon, contentDescription = null) },
-                        label = { Text(stringResource(item.labelRes)) },
+                        label = { Text(stringResource(item.labelRes).uppercase(), style = MaterialTheme.typography.labelSmall) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = NothingRed,
+                            selectedTextColor = NothingRed,
+                            indicatorColor = Color.Transparent,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
                     )
                 }
             }
