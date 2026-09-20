@@ -7,37 +7,32 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FileUpload
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -47,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -61,6 +57,7 @@ import com.odysseus.app.ui.theme.StrengthColor
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
@@ -73,99 +70,103 @@ fun CalendarScreen(
     viewModel: CalendarViewModel = viewModel(factory = CalendarViewModel.Factory(sessionRepository, eventRepository)),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val snackbar = remember { SnackbarHostState() }
-    var showSources by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) { viewModel.messages.collect { snackbar.showSnackbar(it) } }
-
-    // SAF picker: no storage permission needed; works with Files, Drive, Downloads, email attachments.
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let { viewModel.importIcs(context.contentResolver, it) }
-    }
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
-        MonthHeader(
-            month = state.month,
-            onPrevious = viewModel::previousMonth,
-            onNext = viewModel::nextMonth,
+        ModeSelector(mode = state.mode, onSelect = viewModel::setMode)
+        Header(
+            title = state.title(),
+            onPrevious = viewModel::previous,
+            onNext = viewModel::next,
             onToday = viewModel::today,
         )
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = { picker.launch(arrayOf("text/calendar", "application/octet-stream", "*/*")) }) {
-                Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("IMPORT .ICS", style = MaterialTheme.typography.labelMedium)
+        when (state.mode) {
+            CalendarMode.MONTH -> {
+                WeekdayRow()
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(bottom = 4.dp))
+                MonthGrid(
+                    month = YearMonth.from(state.anchor),
+                    sessionsByDate = state.sessionsByDate,
+                    eventsByDate = state.eventsByDate,
+                    onDayClick = onDayClick,
+                )
             }
-            if (state.importedSources.isNotEmpty()) {
-                TextButton(onClick = { showSources = true }) {
-                    Text(
-                        "${state.importedSources.size} IMPORTED",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+            CalendarMode.WEEK -> {
+                WeekdayRow()
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(bottom = 4.dp))
+                WeekView(
+                    start = state.rangeStart,
+                    sessionsByDate = state.sessionsByDate,
+                    eventsByDate = state.eventsByDate,
+                    onDayClick = onDayClick,
+                )
             }
+            CalendarMode.DAY -> DayContent(
+                sessions = state.sessionsByDate[state.anchor].orEmpty(),
+                events = state.eventsByDate[state.anchor].orEmpty(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
+            )
+            CalendarMode.LIST -> AgendaList(
+                from = state.rangeStart,
+                to = state.rangeEnd,
+                sessionsByDate = state.sessionsByDate,
+                eventsByDate = state.eventsByDate,
+                onDayClick = onDayClick,
+            )
         }
-        WeekdayRow()
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(bottom = 4.dp))
-        MonthGrid(
-            month = state.month,
-            sessionsByDate = state.sessionsByDate,
-            eventsByDate = state.eventsByDate,
-            onDayClick = onDayClick,
-        )
-        SnackbarHost(snackbar)
     }
+}
 
-    if (showSources) {
-        AlertDialog(
-            onDismissRequest = { showSources = false },
-            confirmButton = { TextButton(onClick = { showSources = false }) { Text("DONE") } },
-            title = { Text("IMPORTED CALENDARS", style = MaterialTheme.typography.titleSmall) },
-            text = {
-                Column {
-                    state.importedSources.forEach { source ->
-                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                source,
-                                modifier = Modifier.weight(1f),
-                                style = MaterialTheme.typography.bodyMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            IconButton(onClick = { viewModel.removeSource(source) }) {
-                                Icon(Icons.Default.Close, contentDescription = "Remove $source")
-                            }
-                        }
-                    }
-                }
-            },
-        )
+private fun CalendarUiState.title(): String = when (mode) {
+    CalendarMode.DAY -> anchor.format(DateTimeFormatter.ofPattern("EEE d MMM yyyy"))
+    CalendarMode.WEEK -> {
+        val f = DateTimeFormatter.ofPattern("d MMM")
+        "${rangeStart.format(f)} – ${rangeEnd.format(f)}"
+    }
+    CalendarMode.MONTH, CalendarMode.LIST -> YearMonth.from(anchor).format(DateTimeFormatter.ofPattern("MMMM yyyy"))
+}.uppercase()
+
+// --- chrome ---------------------------------------------------------------------------
+
+@Composable
+private fun ModeSelector(mode: CalendarMode, onSelect: (CalendarMode) -> Unit) {
+    val modes = CalendarMode.entries
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        modes.forEachIndexed { i, m ->
+            SegmentedButton(
+                selected = mode == m,
+                onClick = { onSelect(m) },
+                shape = SegmentedButtonDefaults.itemShape(index = i, count = modes.size),
+                colors = SegmentedButtonDefaults.colors(
+                    activeContainerColor = MaterialTheme.colorScheme.primary,
+                    activeContentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+                icon = {},
+            ) { Text(m.name, style = MaterialTheme.typography.labelMedium) }
+        }
     }
 }
 
 @Composable
-private fun MonthHeader(month: YearMonth, onPrevious: () -> Unit, onNext: () -> Unit, onToday: () -> Unit) {
-    val formatter = DateTimeFormatter.ofPattern("MMMM yyyy")
+private fun Header(title: String, onPrevious: () -> Unit, onNext: () -> Unit, onToday: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onPrevious) {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous")
         }
         Text(
-            text = month.format(formatter).uppercase(),
+            text = title,
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.weight(1f),
             textAlign = TextAlign.Center,
+            maxLines = 1,
         )
         TextButton(onClick = onToday) {
             Text("TODAY", style = MaterialTheme.typography.labelMedium, color = NothingRed)
         }
         IconButton(onClick = onNext) {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next month")
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next")
         }
     }
 }
@@ -184,6 +185,8 @@ private fun WeekdayRow() {
         }
     }
 }
+
+// --- month ----------------------------------------------------------------------------
 
 @Composable
 private fun MonthGrid(
@@ -224,10 +227,8 @@ private fun DayCell(
     events: List<CalendarEvent>,
     onClick: () -> Unit,
 ) {
-    val textColor = when {
-        !inMonth -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
-        else -> MaterialTheme.colorScheme.onSurface
-    }
+    val textColor = if (inMonth) MaterialTheme.colorScheme.onSurface
+    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
     Column(
         modifier = Modifier
             .aspectRatio(0.85f)
@@ -243,44 +244,196 @@ private fun DayCell(
             fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
             color = if (isToday) NothingRed else textColor,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.padding(top = 4.dp)) {
-            sessions.map { it.type }.distinct().forEach { type ->
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(if (type == SessionType.RUN) RunColor else StrengthColor),
-                )
-            }
-        }
+        TypeDots(sessions)
         // Short summary so the month view is useful at a glance without opening the day.
         sessions.firstOrNull()?.let { s ->
-            Text(
-                text = s.summaryLabel(),
-                style = MaterialTheme.typography.labelSmall,
-                color = textColor,
-                maxLines = 1,
-            )
+            Text(text = s.summaryLabel(), style = MaterialTheme.typography.labelSmall, color = textColor, maxLines = 1)
         }
-        // Planned events: hairline-boxed label, visually secondary to what actually happened.
-        events.firstOrNull()?.let { e ->
-            Text(
-                text = e.summary,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+        events.firstOrNull()?.let { e -> EventChip(e.summary) }
+    }
+}
+
+@Composable
+private fun TypeDots(sessions: List<Session>) {
+    Row(horizontalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.padding(top = 4.dp)) {
+        sessions.map { it.type }.distinct().forEach { type ->
+            Box(
                 modifier = Modifier
-                    .padding(top = 2.dp)
-                    .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.extraSmall)
-                    .padding(horizontal = 2.dp),
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(if (type == SessionType.RUN) RunColor else StrengthColor),
             )
         }
     }
 }
 
-/** e.g. "5.2k" for a run, "4 sets" for strength. */
-fun Session.summaryLabel(): String = when (type) {
-    SessionType.RUN -> distanceMeters?.let { String.format(Locale.getDefault(), "%.1fk", it / 1000) } ?: "run"
-    SessionType.STRENGTH -> "${sets.size} sets"
+/** Planned events: hairline-boxed label, visually secondary to what actually happened. */
+@Composable
+private fun EventChip(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier
+            .padding(top = 2.dp)
+            .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.extraSmall)
+            .padding(horizontal = 2.dp),
+    )
+}
+
+// --- week -----------------------------------------------------------------------------
+
+@Composable
+private fun WeekView(
+    start: LocalDate,
+    sessionsByDate: Map<LocalDate, List<Session>>,
+    eventsByDate: Map<LocalDate, List<CalendarEvent>>,
+    onDayClick: (LocalDate) -> Unit,
+) {
+    val today = LocalDate.now()
+    Row(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        (0..6).forEach { offset ->
+            val date = start.plusDays(offset.toLong())
+            val isToday = date == today
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clip(MaterialTheme.shapes.small)
+                    .then(if (isToday) Modifier.border(1.dp, NothingRed, MaterialTheme.shapes.small) else Modifier)
+                    .clickable { onDayClick(date) }
+                    .padding(horizontal = 2.dp, vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = date.dayOfMonth.toString(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isToday) NothingRed else MaterialTheme.colorScheme.onSurface,
+                )
+                eventsByDate[date].orEmpty().forEach { EventChip(it.summary) }
+                sessionsByDate[date].orEmpty().forEach { s ->
+                    Text(
+                        text = s.summaryLabel(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (s.type == SessionType.RUN) RunColor else StrengthColor,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+    }
+}
+
+// --- list -----------------------------------------------------------------------------
+
+private sealed class AgendaRow {
+    data class Header(val date: LocalDate) : AgendaRow()
+    data class Event(val date: LocalDate, val event: CalendarEvent) : AgendaRow()
+    data class Done(val date: LocalDate, val session: Session) : AgendaRow()
+}
+
+/** Chronological list of everything in the range, grouped under date headers. */
+@Composable
+private fun AgendaList(
+    from: LocalDate,
+    to: LocalDate,
+    sessionsByDate: Map<LocalDate, List<Session>>,
+    eventsByDate: Map<LocalDate, List<CalendarEvent>>,
+    onDayClick: (LocalDate) -> Unit,
+) {
+    val rows = buildList {
+        var d = from
+        while (!d.isAfter(to)) {
+            val events = eventsByDate[d].orEmpty()
+            val sessions = sessionsByDate[d].orEmpty()
+            if (events.isNotEmpty() || sessions.isNotEmpty()) {
+                add(AgendaRow.Header(d))
+                events.forEach { add(AgendaRow.Event(d, it)) }
+                sessions.forEach { add(AgendaRow.Done(d, it)) }
+            }
+            d = d.plusDays(1)
+        }
+    }
+    if (rows.isEmpty()) {
+        Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+            Text("NOTHING THIS MONTH", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        return
+    }
+    val today = LocalDate.now()
+    val timeFmt = DateTimeFormatter.ofPattern("HH:mm")
+    val zone = ZoneId.systemDefault()
+
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        rows.forEach { row ->
+            when (row) {
+                is AgendaRow.Header -> item(key = "h${row.date}") {
+                    Text(
+                        text = row.date.format(DateTimeFormatter.ofPattern("EEE d MMM")).uppercase(),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (row.date == today) NothingRed else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onDayClick(row.date) }
+                            .padding(top = 16.dp, bottom = 4.dp),
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+                is AgendaRow.Event -> item(key = "e${row.event.id}") {
+                    AgendaLine(
+                        time = if (row.event.allDay) "ALL DAY" else row.event.start.atZone(zone).format(timeFmt),
+                        label = row.event.summary,
+                        tag = "PLANNED",
+                        tagColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        onClick = { onDayClick(row.date) },
+                    )
+                }
+                is AgendaRow.Done -> item(key = "s${row.session.id}") {
+                    val s = row.session
+                    AgendaLine(
+                        time = s.startedAt.atZone(zone).format(timeFmt),
+                        label = when (s.type) {
+                            SessionType.RUN -> "Run · " + s.summaryLabel() + " · " + formatDuration(s.durationMillis)
+                            SessionType.STRENGTH -> "Strength · " + s.summaryLabel()
+                        },
+                        tag = if (s.type == SessionType.RUN) "RUN" else "GYM",
+                        tagColor = if (s.type == SessionType.RUN) RunColor else StrengthColor,
+                        onClick = { onDayClick(row.date) },
+                    )
+                }
+            }
+        }
+        item { Spacer(Modifier.height(24.dp)) }
+    }
+}
+
+@Composable
+private fun AgendaLine(
+    time: String,
+    label: String,
+    tag: String,
+    tagColor: androidx.compose.ui.graphics.Color,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(time, style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(56.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(tag, style = MaterialTheme.typography.labelSmall, color = tagColor)
+    }
 }

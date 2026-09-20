@@ -1,8 +1,5 @@
 package com.odysseus.app.ui.calendar
 
-import android.content.ContentResolver
-import android.net.Uri
-import android.provider.OpenableColumns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -10,30 +7,31 @@ import com.odysseus.app.domain.model.CalendarEvent
 import com.odysseus.app.domain.model.Session
 import com.odysseus.app.domain.repository.CalendarEventRepository
 import com.odysseus.app.domain.repository.SessionRepository
-import com.odysseus.app.ics.IcsParser
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
-import kotlinx.coroutines.Dispatchers
+import java.time.temporal.TemporalAdjusters
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+
+enum class CalendarMode { DAY, WEEK, MONTH, LIST }
 
 data class CalendarUiState(
-    val month: YearMonth,
+    val mode: CalendarMode = CalendarMode.MONTH,
+    /** The date the view is centred on: the day, a day in the week, or a day in the month. */
+    val anchor: LocalDate = LocalDate.now(),
+    val rangeStart: LocalDate = anchor,
+    val rangeEnd: LocalDate = anchor,
     /** Sessions grouped by the local date they started on. */
     val sessionsByDate: Map<LocalDate, List<Session>> = emptyMap(),
     /** Imported events grouped by local date. */
     val eventsByDate: Map<LocalDate, List<CalendarEvent>> = emptyMap(),
-    val importedSources: List<String> = emptyList(),
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -42,70 +40,53 @@ class CalendarViewModel(
     private val events: CalendarEventRepository,
 ) : ViewModel() {
 
-    private val month = MutableStateFlow(YearMonth.now())
+    private data class View(val mode: CalendarMode, val anchor: LocalDate)
 
-    private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 1)
-    /** One-shot user-facing messages (import results). */
-    val messages: SharedFlow<String> = _messages
+    private val view = MutableStateFlow(View(CalendarMode.MONTH, LocalDate.now()))
 
-    val uiState: StateFlow<CalendarUiState> = month
-        .flatMapLatest { m ->
-            // Fetch the whole visible grid (up to 6 weeks) so leading/trailing days get markers too.
-            val (from, to) = m.visibleRange()
+    val uiState: StateFlow<CalendarUiState> = view
+        .flatMapLatest { v ->
+            val (from, to) = v.range()
             combine(
                 sessions.sessionsBetween(from, to),
                 events.eventsBetween(from, to),
-                events.sources(),
-            ) { sessionList, eventList, sources ->
+            ) { sessionList, eventList ->
                 CalendarUiState(
-                    month = m,
+                    mode = v.mode,
+                    anchor = v.anchor,
+                    rangeStart = from,
+                    rangeEnd = to,
                     sessionsByDate = sessionList.groupBy { it.localDate() },
                     eventsByDate = eventList.groupBy { it.localDate() },
-                    importedSources = sources,
                 )
             }
         }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = CalendarUiState(month.value),
+            initialValue = CalendarUiState(),
         )
 
-    fun previousMonth() = month.update { it.minusMonths(1) }
-    fun nextMonth() = month.update { it.plusMonths(1) }
-    fun today() = month.update { YearMonth.now() }
+    fun setMode(mode: CalendarMode) = view.update { it.copy(mode = mode) }
+    fun setAnchor(date: LocalDate) = view.update { it.copy(anchor = date) }
+    fun today() = view.update { it.copy(anchor = LocalDate.now()) }
 
-    /** Reads an .ics from a SAF URI, parses it, and replaces any earlier import of the same file name. */
-    fun importIcs(resolver: ContentResolver, uri: Uri) {
-        viewModelScope.launch {
-            val result = withContext(Dispatchers.IO) {
-                runCatching {
-                    val name = displayName(resolver, uri) ?: uri.lastPathSegment ?: "import.ics"
-                    val text = resolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
-                        ?: error("Could not open file")
-                    val parsed = IcsParser.parse(text, source = name)
-                    events.replaceSource(name, parsed)
-                    name to parsed.size
-                }
-            }
-            result.fold(
-                onSuccess = { (name, n) -> _messages.tryEmit("Imported $n events from $name") },
-                onFailure = { _messages.tryEmit("Import failed: ${it.message ?: it::class.simpleName}") },
-            )
-        }
+    fun previous() = view.update { it.copy(anchor = it.shift(-1)) }
+    fun next() = view.update { it.copy(anchor = it.shift(1)) }
+
+    private fun View.shift(n: Long): LocalDate = when (mode) {
+        CalendarMode.DAY -> anchor.plusDays(n)
+        CalendarMode.WEEK -> anchor.plusWeeks(n)
+        CalendarMode.MONTH, CalendarMode.LIST -> anchor.plusMonths(n)
     }
 
-    fun removeSource(source: String) {
-        viewModelScope.launch {
-            events.deleteSource(source)
-            _messages.tryEmit("Removed $source")
-        }
+    private fun View.range(): Pair<LocalDate, LocalDate> = when (mode) {
+        CalendarMode.DAY -> anchor to anchor
+        CalendarMode.WEEK -> anchor.weekRange()
+        // The grid shows leading/trailing days of neighbouring months, so fetch the whole grid.
+        CalendarMode.MONTH -> YearMonth.from(anchor).visibleRange()
+        CalendarMode.LIST -> YearMonth.from(anchor).let { it.atDay(1) to it.atEndOfMonth() }
     }
-
-    private fun displayName(resolver: ContentResolver, uri: Uri): String? =
-        resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
-            if (c.moveToFirst()) c.getString(0) else null
-        }
 
     class Factory(
         private val sessions: SessionRepository,
@@ -123,4 +104,10 @@ fun YearMonth.visibleRange(): Pair<LocalDate, LocalDate> {
     val start = first.minusDays(leading)
     val end = start.plusDays(6 * 7 - 1)
     return start to end
+}
+
+/** Monday..Sunday of the week containing this date. */
+fun LocalDate.weekRange(): Pair<LocalDate, LocalDate> {
+    val monday = with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    return monday to monday.plusDays(6)
 }

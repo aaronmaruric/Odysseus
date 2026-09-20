@@ -23,17 +23,18 @@ JDK it needs. From the command line, once `local.properties` points at an SDK:
 ```
 app/src/main/java/com/odysseus/app/
 ├── domain/          Pure Kotlin — models + repository interface. No Android imports.
-│   ├── model/       Session, Split, Exercise, ExerciseSet
-│   └── repository/  SessionRepository
+│   ├── model/       Session, Split, Exercise, ExerciseSet, CalendarEvent, UserProfile, WeightEntry
+│   └── repository/  SessionRepository, CalendarEventRepository, ProfileRepository, BodyStatsRepository
 ├── data/            Room implementation of the domain repository.
 │   ├── local/       Entities, DAO, database
 │   └── repository/  RoomSessionRepository (+ entity<->domain mappers)
 ├── ics/             Pure Kotlin iCalendar parser (folding, TZID, DURATION, RRULE expansion)
 ├── tracking/        GPS engine: RunTracker interface, LocationManager implementation, foreground service
 ├── ui/
-│   ├── calendar/    Month grid with run/strength markers; day detail with splits/sets tables
-│   ├── run/         Run logging (manual entry until GPS is ported)
+│   ├── calendar/    Day / week / month / list views; day detail with splits, sets and planned events
+│   ├── run/         Live GPS run tracking, plus manual entry
 │   ├── strength/    Workout logging (exercise / reps / weight rows)
+│   ├── settings/    Profile, weight log, .ics import
 │   ├── navigation/  Bottom-nav host and routes
 │   └── theme/       Material 3 theme
 ├── OdysseusApp.kt   Application + hand-rolled DI container
@@ -47,7 +48,8 @@ Multiplatform module if an iOS build is ever wanted.
 
 - [x] Live GPS tracking with km splits (LocationManager, foreground service, wake lock)
 - [x] Import .ics calendars (training plans, races) and show them alongside sessions
+- [x] Day / week / month / agenda calendar views
+- [x] Profile and weight log
 - [ ] Exercise picker + rest timer on the strength screen (Flexify reference)
-- [ ] Week and agenda calendar views (Fossify reference)
 - [ ] Per-exercise and per-distance progress charts
 - [ ] GPX/TCX export

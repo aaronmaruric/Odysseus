@@ -123,3 +123,11 @@ data class CalendarEventEntity(
     val allDay: Boolean,
     val source: String,
 )
+
+@Entity(tableName = "weight_entries", indices = [Index("atEpochMillis")])
+data class WeightEntryEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val atEpochMillis: Long,
+    val weightKg: Double,
+    val note: String,
+)

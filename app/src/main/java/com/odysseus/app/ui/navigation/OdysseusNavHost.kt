@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -29,6 +30,7 @@ import com.odysseus.app.R
 import com.odysseus.app.ui.calendar.CalendarScreen
 import com.odysseus.app.ui.calendar.DayDetailScreen
 import com.odysseus.app.ui.run.RunScreen
+import com.odysseus.app.ui.settings.SettingsScreen
 import com.odysseus.app.ui.strength.StrengthScreen
 import com.odysseus.app.ui.theme.NothingRed
 import java.time.LocalDate
@@ -37,6 +39,7 @@ sealed class Route(val path: String) {
     data object Calendar : Route("calendar")
     data object Run : Route("run")
     data object Strength : Route("strength")
+    data object Settings : Route("settings")
     data object DayDetail : Route("day/{date}") {
         fun build(date: LocalDate) = "day/$date"
     }
@@ -48,6 +51,7 @@ private val topLevel = listOf(
     TopLevel(Route.Calendar, R.string.nav_calendar, Icons.Default.CalendarMonth),
     TopLevel(Route.Run, R.string.nav_run, Icons.AutoMirrored.Filled.DirectionsRun),
     TopLevel(Route.Strength, R.string.nav_strength, Icons.Default.FitnessCenter),
+    TopLevel(Route.Settings, R.string.nav_settings, Icons.Default.Settings),
 )
 
 @Composable
@@ -99,7 +103,7 @@ fun OdysseusNavHost(container: AppContainer) {
             composable(Route.DayDetail.path) { entry ->
                 val date = LocalDate.parse(entry.arguments?.getString("date"))
                 DayDetailScreen(
-                    date = date,
+                    initialDate = date,
                     repository = container.sessionRepository,
                     eventRepository = container.calendarEventRepository,
                     onBack = { navController.popBackStack() },
@@ -110,6 +114,13 @@ fun OdysseusNavHost(container: AppContainer) {
             }
             composable(Route.Strength.path) {
                 StrengthScreen(repository = container.sessionRepository)
+            }
+            composable(Route.Settings.path) {
+                SettingsScreen(
+                    profileRepository = container.profileRepository,
+                    bodyStatsRepository = container.bodyStatsRepository,
+                    eventRepository = container.calendarEventRepository,
+                )
             }
         }
     }
